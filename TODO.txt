@@ -1,0 +1,11 @@
+Input: 
+-- Obtain list of unique edges and assiociated faces. (Convert Format ?)
+
+Algorithm:
+-- Optimize (5)
+---- Function D
+------- Function delta
+---- Optimize stuff
+-- Optimize (6)
+---- Function R
+---- Optimize stuff
