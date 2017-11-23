@@ -1,8 +1,12 @@
 ####
 # 1- Creating a noised file from an .off file
 ####
-file = "../Data/chat.off"
-noisestd = 0.5
+args = commandArgs(trailingOnly=TRUE)
+print(args)
+file = args[1]
+noisestd = as.integer(args[2])
+#file = "../Data/bone.off"
+#noisestd = 0.5
 
 #Reading OFF files
 data <-readLines(file)
@@ -20,4 +24,3 @@ for (i in 1:Nvertices){
 
 #Saving noised file
 writeLines(data, con = "testnex.off")
-
