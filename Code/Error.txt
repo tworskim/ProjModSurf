@@ -1,0 +1,105 @@
+Erreur longueur edge
+
+5 7
+[8 9 7 0] [7 9 8 1]
+Erreur longueur edge
+
+9 11
+[13 14 12  0] [12 14 13  1]
+Erreur longueur edge
+
+25 27
+[23 24 22  0] [22 24 23  1]
+Erreur longueur edge
+
+37 39
+[33 34 32  0] [32 34 33  1]
+Erreur longueur edge
+
+41 43
+[38 39 37  0] [37 39 38  1]
+Erreur longueur edge
+
+81 83
+[62 63 61  0] [61 63 62  1]
+Erreur longueur edge
+
+113 115
+[81 82 80  0] [80 82 81  1]
+Erreur longueur edge
+
+137 139
+[100 101  99   0] [ 99 101 100   1]
+Erreur longueur edge
+
+148 156
+[105 106 104   1] [104 106 105   1]
+Erreur longueur edge
+
+197 199
+[132 133 131   0] [131 133 132   1]
+Erreur longueur edge
+
+257 268
+[161 162 160   2] [160 162 161   0]
+Erreur longueur edge
+
+356 364
+[210 211 209   1] [209 211 210   1]
+Erreur longueur edge
+
+357 359
+[212 213 211   0] [211 213 212   1]
+Erreur longueur edge
+
+721 732
+[390 391 389   2] [389 391 390   0]
+Erreur longueur edge
+
+837 839
+[435 436 434   0] [434 436 435   1]
+Erreur longueur edge
+
+841 843
+[440 441 439   0] [439 441 440   1]
+Erreur longueur edge
+
+869 871
+[460 461 459   0] [459 461 460   1]
+Erreur longueur edge
+
+901 903
+[480 481 479   0] [479 481 480   1]
+Erreur longueur edge
+
+964 972
+[510 511 509   1] [509 511 510   1]
+Erreur longueur edge
+
+965 967
+[512 513 511   0] [511 513 512   1]
+Erreur longueur edge
+
+1092 1100
+[574 575 573   1] [573 575 574   1]
+Erreur longueur edge
+
+1093 1095
+[576 577 575   0] [575 577 576   1]
+Erreur longueur edge
+
+1220 1228
+[638 639 637   1] [637 639 638   1]
+Erreur longueur edge
+
+1233 1244
+[646 647 645   2] [645 647 646   0]
+Erreur longueur edge
+
+1281 1292
+[664 665 663   2] [663 665 664   0]
+Erreur longueur edge
+
+1425 1436
+[729 730 728   2] [728 730 729   0]
+[ 606.  650.  651.  652.]

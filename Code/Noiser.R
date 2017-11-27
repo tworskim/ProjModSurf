@@ -3,10 +3,10 @@
 ####
 args = commandArgs(trailingOnly=TRUE)
 print(args)
-file = args[1]
-noisestd = as.integer(args[2])
-#file = "../Data/bone.off"
-#noisestd = 0.5
+#file = args[1]
+#noisestd = as.integer(args[2])
+file = "../Data/eight.off"
+noisestd = 0.2
 
 #Reading OFF files
 data <-readLines(file)
