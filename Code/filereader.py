@@ -1,10 +1,26 @@
 import numpy as np
 from scipy import sparse
-from joblib import Parallel, delayed
+#from joblib import Parallel, delayed
 import math
 import time
+import os
+import sys
 np.set_printoptions(threshold=np.inf)
 
+
+filename = "chat"
+
+
+dirpath = "../Meshs/" + filename + "/" +  "input/"
+dirpathout = "../Meshs/" + filename
+if not os.path.exists(dirpathout):
+    os.makedirs(dirpathout)
+files = os.listdir(dirpath)
+
+print("Select input std:")
+for i,s in enumerate(files):
+    print(str(i)+ ": " + s)
+files = [files[int(input("Enter file id: "))]]
 ####################
 #FILE READER
 def read_off(file):
@@ -16,7 +32,14 @@ def read_off(file):
         verts.append([float(s) for s in file.readline().strip().split(' ')])
     faces = []
     for i_face in range(n_faces):
-        faces.append([int(s) for s in file.readline().strip().split(' ')][1:])
+        rl = file.readline().strip().split(' ')
+        if(len(rl) == 5):
+            n_faces += 1
+            rlbis = [rl[k] for k in [3,4,1]]
+            faces.append([int(s) for s in rl[1:4]])
+            faces.append([int(s) for s in rlbis])
+        else:
+            faces.append([int(s) for s in rl][1:4])
     return verts, faces
 
 def write_off(verts, faces, filepath):
@@ -36,40 +59,56 @@ def write_off(verts, faces, filepath):
     file.close()
     return 
 
+def write_edges(edges, filepath):
+    file = open(filepath,"w")
+    file.write(str(len_edges)+ "\n")
+    for i in range(len(edges)):
+        for j in range(4):
+            file.write(str(edges[i][j]) + " ")
+        file.write("\n")
+    #file.writelines(verts)
+    file.close()
+    return 
+
+def read_edges(filepath):
+    file = open(filepath) 
+    #len_edges = int(file.readline())
+    edges = np.zeros((len_edges, 4), dtype = np.uint32)
+    for i in range(len_edges):
+        s = file.readline().strip().split(' ')
+        for j in range(4):
+            edges[i][j] = s[j]
+    file.close()
+    return edges
+
 ####################
-#MESH TRANSFORM
+#MESH TRANSFORM 
+
+def lenedges(verts, faces): 
+    return(len(faces) + len(verts)+ 2* (filename=="eight") - 2*(filename!="eight"))
+    
 def common_edge(face1, face2):
-    intersect = np.intersect1d(face1[:3], face2[:3])
+    intersect = np.intersect1d(face1, face2)
     if len(intersect) >= 2 :
         p1 = intersect[0]
         p3 = intersect[1]
-        for i in range(3):
-            if (face1[i%3] == p1):
-                if face1[(i+1)%3] == p3:
-                    p4= np.setxor1d(face1[:3], intersect)[0]
-                    p2= np.setxor1d(face2[:3], intersect)[0]
-                elif face1[(i-1)%3] == p3:
-                    p2= np.setxor1d(face1[:3], intersect)[0]
-                    p4= np.setxor1d(face2[:3], intersect)[0]
-                else:
-                    print("Orientation couldn't be solved")
+#        for i in range(3):
+#            if (face1[i%3] == p1):
+#                if face1[(i+1)%3] == p3:
+#                    p4= np.setxor1d(face1, intersect)[0]
+#                    p2= np.setxor1d(face2, intersect)[0]
+#                elif face1[(i-1)%3] == p3:
+#                    p2= np.setxor1d(face1, intersect)[0]
+#                    p4= np.setxor1d(face2, intersect)[0]
+#                else:
+#                    print("Orientation couldn't be solved")
+        p4= np.setxor1d(face1, intersect)[0]
+        p2= np.setxor1d(face2, intersect)[0]
+        
         edge = np.array([p1,p2,p3,p4])
-        if (len(edge) < 4):
-            print("Erreur longueur edge:")
-            #print(edge)
-            #print(face1[:3])
-            #print(face2[:3])
-            return(True, edge)
-        else:
-            return(True, edge)
+        return(True, edge)
     else:
         return(False, np.empty)
-
-def len_edges(verts, faces):
-    #wtf sort this mess 
-    return(len(faces) + len(verts)+2)
-
-
 
 def param(edges):
     l = 0
@@ -83,13 +122,52 @@ def param(edges):
         gam += math.acos(np.dot(p14,p12)/(norm(p14)*norm(p12)))
     l = l/len_edges
     gam = gam/len_edges
-    print("Mean length")
-    print("Mean dihedral angle")
-    print(l)
-    print(gam)
+    #print("Mean length: " + str(l))
+    #print("Mean dihedral angle: " + str(gam))
     return(l,gam)
     
-def find_edges(faces, len_edges):
+    
+def find_edges2(faces, len_edges): 
+    edgelist = []
+    edges = []
+    for i, currentFace in enumerate(faces):
+        edgeface = list_edges(currentFace[:3])
+        edgelist, edges = matchedges(edgelist,edgeface, edges)
+        sys.stdout.write("\r" + str(100 *int(len(edges)/len_edges)) + "%")
+        sys.stdout.flush()
+    return(edges)
+    
+def list_edges(currentFace):
+    edge1 = currentFace[0:]
+    edge2 = currentFace[1:] + [currentFace[0]]
+    edge3 = [currentFace[2]] + currentFace[0:2]
+    return([edge1,edge2,edge3])
+    len(edges[2303])
+def matchedges(edgelist, edgeface, edges):
+    crctf = 0
+    for i in range(3):
+        edge = edgeface[i-crctf]
+        (boolean, edgelist, edges) = compedges(edge, edgelist, edges)
+        if boolean:
+            edgeface.pop(i-crctf)
+            crctf +=1
+    edgelist += edgeface
+    return(edgelist,edges)
+    
+def compedges(edge, edgelist, edges):
+    i = len(edgelist) -1
+    boolean = False
+    while  (i >=0) & (boolean == False):
+        #print(len(np.intersect1d(edge[:2], edgelist[i][:2])))
+        if len(np.intersect1d(edge[:2], edgelist[i][:2]))>=2:
+            edges.append([edge + [edgelist[i][2]]][0])
+            edgelist.pop(i)
+            boolean = True
+        i += -1
+    return(boolean, edgelist, edges)
+    
+def find_edges(faces, edgelist):
+    
 
     faces = np.array(faces)
     z = np.zeros((len(faces),1), dtype=faces.dtype)
@@ -99,26 +177,23 @@ def find_edges(faces, len_edges):
     k = 0
     for i, currentFace in enumerate(faces):
         j = i + 1
-        while (currentFace[3] <3) & (j < len(faces)):
+        while (currentFace[3] < 3) & (j < len(faces)):
             if faces[j][3] < 3:
-                (bool, edge) = common_edge(currentFace, faces[j])
+                face2 = faces[j]
+                (bool, edge) = common_edge(currentFace[:3], face2[:3])
                 if bool:
-                    if len(edge) < 4:
-                        print(i,j)
-                        print(currentFace, faces[j])
-                        print("\n")
-                    else:
-                        edges[k] = edge
-                        currentFace[3] +=  1
-                        faces[j][3] += 1
-                        k +=1
-                elif faces[j][3] >3:
-                    print("This face has common edges with more than 3 faces")
-                    print(j, faces[j])
+                    edges[k] = edge
+                    currentFace[3] +=  1
+                    face2[3] += 1
+                    k +=1
+                    faces[j][3] = face2[3]
             j += 1;
-        
+        sys.stdout.write("\r" + str(int(100*k/len_edges))+ "% " + str(k) + "/" + str(len_edges))
+        sys.stdout.flush()
+    if k < len_edges:
+        edges = edges[:k]
     return(edges)
- 
+
 def coord(edge):
     coords = np.zeros((4,3), dtype=np.float)
     coords[0] = verts[edge[0]]
@@ -133,71 +208,67 @@ def norm(point):
     
 #########################
 #OPERATOR CALCULATION
-#timer = 0
-def calcops():
 
+def calcops():
     dcol = []
     drow = []
     ddata = []
     nrow = 3*len_edges
     ncol = len_edges * 12
-    Parallel(n_jobs = 5) (delayed(subcal)(i) for i in range(len_edges))
-        
+    for i in range(len_edges) : 
+        drow += 4* [i] + 4* [i+1] + 4* [i+2]
+        for k in range(3):
+            dcol +=  [12 * i + k, 12 * i +3 + k, 12 * i + 6 + k, 12 * i + 9 + k]
+        dat = subcal(i)
+        ddata += dat
     Dmatrix = sparse.coo_matrix((ddata, (drow,dcol)), shape=(nrow, ncol), dtype=np.float)
     return(Dmatrix)
 
-
 def subcal(i):
     coords = coord(edges[i])
-        #start = time.time()
+    
     c1 = coords[0]
     c2 = coords[1]
     c3 = coords[2]
     c4 = coords[2]
-    #timer += time.time() - start
+    
     p12 = c2 - c1
     p14 = c4 - c1
     p32 = c3 - c2
     p34 = c4 - c3
     p13 = c3 - c1
-#       p12 = p12.T
-#       p14 = p14.T
-#       p32 = p32.T
-#       p34 = p34.T
-#       p13 = p13.T
-    p31 = -p13
-
+    
 #calcul thetas
-    theta0 = math.acos(np.dot(p13,p12.T)/(norm(p13)*norm(p12)))
-    theta1 = math.acos(np.dot(p14,p12.T)/(norm(p14)*norm(p12)))
-        #thetas[i][2] = math.acos(np.dot(p32,p31)/(norm(p32)*norm(p31)))
-        #thetas[i][3] = math.acos(np.dot(p34,p31)/(norm(p34)*norm(p31)))
-        
+    
+    np13 = norm(p13)
+    np14 = norm(p14)
+    np12 = norm(p12)
         #Calcul deltas
-    delta0 = 0.5 * norm(p12) * norm(p13) * math.sin(theta0)
-    delta1 = 0.5 * norm(p14) * norm(p13) * math.sin(theta1)
-        
+    
+    delta0 = 0.5 * norm(p12) * np13 * math.sqrt(1 - (np.dot(p13,p12)/(np13*np12))**2)
+    delta1 = 0.5 * norm(p14) * np13 * math.sqrt(1 - (np.dot(p14,p12)/(np14*np12))**2)
+    sumd = delta0 + delta1
+    
         #Calc D
-    a0 = (delta0* np.dot(p34,p13.T) + delta1* np.dot(p31,-p32.T))/(norm(p13)**2*(delta0 + delta1))
+    a0 = (delta0* np.dot(p34,p13) + delta1* np.dot(-p13,-p32))/(np13**2*sumd)
     a1 = delta1/(delta0 + delta1)
-    a2 = (delta0 * np.dot(-p14,p13.T) + delta1* np.dot(p31,p12.T))/(norm(p13)**2*(delta0 + delta1))
-    a3 = delta0/(delta0 + delta1)
-
-    drow += 12* [i] + 12* [i+1] + 12* [i+2]
-    dcol +=  3 * list(range(12*i, 12*(i + 1)))
-    ddata += [a0, 0, 0, a1, 0, 0, a2, 0, 0, a3, 0, 0] + [0, a0, 0, 0, a1, 0, 0, a2, 0, 0, a3, 0] + [0, 0, a0, 0, 0, a1, 0, 0, a2, 0, 0, a3]
-    return()
+    a2 = (delta0 * np.dot(-p14,p13) + delta1* np.dot(-p13,p12))/(np13**2*sumd)
+    a3 = delta0/sumd
+    ddata = 3 * [a0, a1, a2, a3]
+    return(ddata)
 ###########################
-# PARAMETERS OPTIMIZATION
+# PARAMETERS OPTIMIZATION   
+
 def optdelt(D):
     delt = np.zeros((3*len_edges,1), dtype=np.float)
-    #count = 0
+    count = 0
     for i in range(len_edges):
         dp = D[3*i:3*(i+1)]
-        if beta * norm(dp.T)  > lambd:
+        if beta * norm(dp.T)  >= lambd:
             delt[3*i:3*(i+1)] = dp
-            #count += 1 
-    #print("Norm L0 of delt:" + str(count))
+            count += 1 
+    #sys.stdout.write("\r" + "Sharp conserved proportion:" +str(int(100*count/len_edges))+ "%")
+    #sys.stdout.flush()
     return(delt)
 
 def verttoedge (edges):
@@ -244,121 +315,120 @@ def transformvect(p, verts):
         verts[i][2] =  float(p[3*i + 2])
     return(verts)
     
-filepath = "input.off"
-print("Lecture Fichier")
-(verts, faces) = read_off(open(filepath))
-len_edges = len_edges(verts,faces)
-
-print("Transformation mesh")
-edges = find_edges(faces, len_edges)
-(longueur, gamma) = param(edges)
-beta = 0.001
-lambd = 0.02 * longueur**2 * gamma
-alpha = 0.1 * gamma
-
-print("Calcul Opérateurs")
-#Dmatrix = calcops(edges)
-
-print("Calcul Matrices")
-print("Calcul unique R et P")
-r= Rmatrix()
-e= verttoedge(edges)
-Rmat = r * e
-Rmatsym = Rmat.transpose() * Rmat
-Pconstpart = sparse.coo.coo_matrix(np.eye(3*len(verts)))
-pstar = transform1d(verts)
-pstar = np.mat(pstar)
-pstar = pstar.T
-
-step = 1
-
-###
-#Time mesurement variable 
-t0 = 0
-t1 = 0
-t2 = 0
-t3 = 0
-t4 = 0
-t5 = 0
-t6 = 0
-t01 = 0
-#TODO factoriser sparse.coo.coo_matrix(pstar)
-while (beta < 1000):
-
-    #print("Calcul Opérateurs")
-    start =time.time()
-    coords = e * sparse.coo.coo_matrix(pstar)
-    coords = coords.todense()
-    t0 += time.time() - start
-    start =time.time()
-    Dmatrix  = calcops()
-    t01 += time.time() - start
-    #print("Calcul récurrent D")
-    start =time.time()
     
-    DM = Dmatrix * e
-    DMT = DM.transpose()
-    DMsym =  DMT * DM
     
-    t1 += time.time() - start
-                 
-    #print("Optim delta")
-    start = time.time()    
-    DMP = DM * sparse.coo.coo_matrix(pstar)
-    DMP = DMP.todense()
-    delt= optdelt(DMP)
-    t2 += time.time() - start
-    #print("Calcul")
+(verts, faces) = read_off(open(dirpath + "/" + "0.001.off"))
+len_edges = lenedges(verts,faces)
+
+
+######################################
+
+#Gets edges if saved, calculate it if not
+######################################
+print("Edges recuperation for mesh: " + filename)
+if os.path.isfile(dirpathout + "/" + "edges.off"):
+    edges = read_edges(dirpathout + "/" + "edges.off")
+    len_edges = len(edges)
+    print("Edges were saved")
+else:
     start = time.time()
-    P = Pconstpart + beta * (DMsym) + alpha * Rmatsym
-    t3 += time.time() - start
-    #♠delt = matrix(transform1d(deltvect))
+    edges = find_edges(faces, len_edges)
+    len_edges = len(edges)
+    print("\nEdges saved for future use")
+    write_edges(edges, dirpathout + "/" + "edges.off")
+    timer = time.time() - start
+    print("\nEdges recuperation time = " + str(int(timer/60)) + " m " + str(int(timer - 60 * int(timer/60))) + " s")
+
+
+######################################
+
+#Perform smoothing on all files from input folder
+######################################
+print("\nSharpness option:\n1: Paper behavior\n<1: Less sharp edges\n>1: more sharp edges")
+sharpness = float(input("Enter sharpness: "))
+print("\nSmoothness option:\n Float parameter\n0: No smoothing\n1: Paper behavior\nn: Smoothen n times harder \n2: Really smooth")
+smoothness = float(input("Enter smoothness: "))
+print("\nSpeed option:\n0: Paper behavior\n1: 2x faster\n2: 4x faster. Be careful\n3: 8x faster. Try if you want")
+speed = int(input("Enter speed: "))
+
+a = 0.5
+alphaprev = 0.1 * smoothness
+if(smoothness == 314159):
+    a =1
+    alphaprev = 0.1
+if (speed == 0):
+    b = math.sqrt(2)
+elif (speed == 1):
+    b = 2
+    a = a**2
+elif (speed == 2):
+    b = 4
+    a = a**4
+elif (speed == 3):
+    b = 16
+    a = a**8
+            
+for i,file in enumerate(files):
     start = time.time()
-    Qaux = beta *(DMT * delt)
-    Q =  sparse.coo.coo_matrix(pstar) + Qaux
-    t4 += time.time() - start
-    #print("opt")
-    start = time.time()
-    p = sparse.linalg.spsolve(P, Q)
-    t5 += time.time() - start
-    #optres = solvers.qp(Psolv, Qsolv)
-    #p = optres['x']
-    start = time.time() 
-    p = np.mat(p).T
-    tmp1 = DMP - delt
-    #print("Norme de beta *  D(p) - delt: " + str(beta * tmp1.T*tmp1))
-    tmp2 = pstar - p
-    #print("Norme de p-p*: " + str(tmp2.T * tmp2))
-    pstar = p
-    verts = transformvect(p, verts)
-    #alpha = 0.5*alpha
-    beta = math.sqrt(2) * beta
+    print("\nSmoothing mesh " + str(i+1) + "/" + str(len(files)))
+    filepath = dirpath + "/" + file
+    (verts, faces) = read_off(open(filepath))
+    #len_edges = lenedges(verts,faces)
+    (longueur, gamma) = param(edges)
+    beta = 0.001
+    if(sharpness <= 0):
+        print("Sharpness must be > 0")
+    if(sharpness > 0):
+        lambd = 0.02 * longueur**2 * gamma / (sharpness)
+    if(smoothness < 0):
+        print("Smoothness must be >= 0")
+    alpha = alphaprev *  gamma
+    r= Rmatrix()
+    e= verttoedge(edges)
+    Rmat = r * e
+    Rmatsym = Rmat.transpose() * Rmat
+    Pconstpart = sparse.identity(3*len(verts))
+    pstar = transform1d(verts)
+    pstar = np.mat(pstar)
+    pstar = pstar.T
     
-    #print(beta)
-    print(step)
-    #write_off(verts, faces, "result"+ str(step)+ ".off")
-    step +=1
-    t6 += time.time() - start
+    step = 1
+    #TODO factoriser sparse.coo.coo_matrix(pstar)
+    while (beta < 1000):
+    
+        coords = e * sparse.coo.coo_matrix(pstar)
+        coords = coords.todense()
+        Dmatrix= calcops()
+        DM = Dmatrix * e
+        DMT = DM.transpose()
+        DMsym =  DMT * DM 
+        DMP = DM * sparse.coo.coo_matrix(pstar)
+        DMP = DMP.todense()
+        delt= optdelt(DMP)
+        P = Pconstpart + beta * (DMsym) + alpha * Rmatsym
+        Qaux = beta *(DMT * delt)
+        Q =  sparse.coo.coo_matrix(pstar) + Qaux
+        (p,info) = sparse.linalg.cg(P, Q)
+        if(info>0):
+            print("Tolerance not achieved")
+        p = np.mat(p).T
+        pstar = p
+        verts = transformvect(p, verts)
 
-print("fin")
-print("Creation fichier off result")
-write_off(verts, faces, "result.off")
-print("Temps")
-print(t0)
-print(t01)
-print(t1)
-print(t2)
-print(t3)
-print(t4)
-print(t5)
-print(t6)
-#
-#len_egdes
-
-
-
-
-
-
-
-
+        alpha = a*alpha
+        beta = b * beta
+        
+        sys.stdout.write("\r" + str(int(step*(2.5*2**(speed))))+ "%")
+        sys.stdout.flush()
+        #write_off(verts, faces, "result"+ str(step)+ ".off")
+        step +=1
+    
+    
+    filepathout = dirpathout + "/" + "result/" + "sh"+ str(sharpness) + "sm" + str(smoothness) + "sp" + str(speed) + "std" +file
+    if not os.path.exists(dirpathout + "/" + "result/"):
+        os.makedirs(dirpathout + "/" + "result")
+    #print("\nCreation" + filepathout)
+    write_off(verts, faces, filepathout)
+    timer = time.time()-start
+    print("\nSmoothing time = " + str(int(timer/60)) + " m " + str(int(timer - 60* int(timer/60))) + " s")
+    write_off(verts, faces, "test.off")

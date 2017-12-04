@@ -3,13 +3,21 @@
 ####
 args = commandArgs(trailingOnly=TRUE)
 print(args)
+dir = "../Meshs/"
+listmesh = setdiff(list.files(path = dir), list.dirs(path = dir, recursive = FALSE, full.names = FALSE))
+meshs = strsplit(listmesh, ".off")
+
 #file = args[1]
 #noisestd = as.integer(args[2])
-file = "../Data//eight.off"
-noisestd = 0.1
+for (file in meshs){
+for (noisestd in c(0.001, 0.002,0.005,0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1)){
+filepath = paste(dir, file,".off", sep = "")
+#dir.create(paste(dir, file, sep = ""))
+#dir.create(paste(dir, file, "/", "input",  sep = ""))
+
 
 #Reading OFF files
-data <-readLines(file)
+data <-readLines(filepath)
 numberOfElements <- strsplit(data[2], "[ |\t]+")
 Nvertices <- as.integer(numberOfElements[[1]][1])
 Nfaces <- as.integer(numberOfElements[[1]][2])
@@ -25,8 +33,14 @@ for (i in 1:Nvertices){
 for (i in 1:Nfaces){
   splitedString <- strsplit(data[2 + i + Nvertices], "[ |\t]+")
   splitedString <- as.integer(splitedString[[1]])
-  data[2 + i + Nvertices] <- paste(splitedString[1], splitedString[2], splitedString[3], splitedString[4])
+  data[2 + i + Nvertices] <- paste(splitedString[1:length(splitedString)], collapse = " ")
 }
 
 #Saving noised file
-writeLines(data, con = "input.off")
+dirwl = paste(dir,file, "/input/", sep = "")
+filwl = paste(noisestd, ".off", sep = "")
+writeLines(data, con = paste(dirwl, filwl, sep = ""))
+print(file)
+print(noisestd)
+}}
+list.dirs("../Inputs/")
