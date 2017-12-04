@@ -1,9 +1,8 @@
-This is a markdown file
+# He-Fleishmann Mesh Denoising in Python
 
-[this is a link to google](www.google.fr)
 
-#A Title
+Implementation of [this method](http://faculty.cs.tamu.edu/schaefer/research/L0Smoothing.pdf) in python.
+Possibility to interactively modify algorithm behavior
 
-###A big or small title ?
+Needs scipy and numpy packages.
 
-$Maybe mathematical style$
